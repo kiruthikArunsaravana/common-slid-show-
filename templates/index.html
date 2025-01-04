@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full-Screen Slideshow</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        #slideshow-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #slideshow-container img,
+        #slideshow-container video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        #error {
+            color: red;
+            font-size: 16px;
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="slideshow-container">
+        <!-- Media files will be dynamically inserted here -->
+    </div>
+    <div id="error"></div>
+
+    <script>
+        const mediaFiles = {{ media_files|tojson }}; // Media files passed from Flask
+        let currentIndex = 0;
+
+        function showMedia() {
+            const container = document.getElementById('slideshow-container');
+            const errorDisplay = document.getElementById('error');
+            container.innerHTML = ''; // Clear the container
+            errorDisplay.textContent = ''; // Clear any previous errors
+
+            const media = mediaFiles[currentIndex];
+            let element;
+
+            try {
+                if (media.endsWith('.jpg') || media.endsWith('.png')) {
+                    // Create an image element
+                    element = document.createElement('img');
+                    element.src = `/static/media/${media}`;
+                    element.alt = media;
+                    element.onerror = () => {
+                        errorDisplay.textContent = `Failed to load image: ${media}`;
+                    };
+                } else if (media.endsWith('.mp4')) {
+                    // Create a video element
+                    element = document.createElement('video');
+                    element.autoplay = true;
+                    element.controls = false;
+                    element.loop = false;
+
+                    const source = document.createElement('source');
+                    source.src = `/static/media/${media}`;
+                    source.type = 'video/mp4';
+                    element.appendChild(source);
+
+                    // Add error handling for videos
+                    element.onerror = () => {
+                        errorDisplay.textContent = `Failed to load video: ${media}`;
+                    };
+
+                    // Add a listener to move to the next media when the video ends
+                    element.onended = () => {
+                        currentIndex = (currentIndex + 1) % mediaFiles.length;
+                        showMedia();
+                    };
+                }
+
+                container.appendChild(element); // Append media to the container
+
+                // If it's an image, set a timer to move to the next media
+                if (media.endsWith('.jpg') || media.endsWith('.png')) {
+                    setTimeout(() => {
+                        currentIndex = (currentIndex + 1) % mediaFiles.length;
+                        showMedia();
+                    }, 5000); // 5 seconds delay for images
+                }
+            } catch (err) {
+                errorDisplay.textContent = `An error occurred: ${err.message}`;
+            }
+        }
+
+        // Start the slideshow
+        if (mediaFiles.length > 0) {
+            showMedia();
+        } else {
+            document.getElementById('error').textContent = 'No media files found.';
+        }
+        // Refresh the page every 5 minutes (300,000 milliseconds)
+    setTimeout(() => {
+        window.location.reload();
+    }, 300000); // 300,000 ms = 5 minutes
+
+    </script>
+</body>
+</html>
